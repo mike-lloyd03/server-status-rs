@@ -1,0 +1,14 @@
+username: mqtt_username
+password: mqtt_password
+broker: mqtt_broker
+port: 1883
+
+# Set the below values to true to enable them.
+disk_use_percent: true
+disk_paths: 
+  - "/"
+  - "/mnt/data"
+processor_use: true
+processor_temperature: true
+memory_use: true
+last_boot: true
