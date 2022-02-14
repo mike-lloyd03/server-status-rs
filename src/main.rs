@@ -1,12 +1,7 @@
 use anyhow::Result;
 // use heim::{cpu, disk};
 use paho_mqtt as mqtt;
-use server_status_rs::{
-    get_disk_use_percent, get_memory_use, get_processor_temperature, get_processor_use,
-    load_config, Config,
-};
-
-const TOPIC_PREFIX: &str = "server_status/TEST/";
+use server_status_rs::*;
 
 fn main() {
     let config = match load_config() {
@@ -25,11 +20,15 @@ fn main() {
         }
     };
     send_status(&config, &client);
-    client.disconnect(None).unwrap();
+    client
+        .disconnect(None)
+        .expect("Failed to disconnect from the MQTT broker");
 }
 
+/// Connect to the MQTT broker and return the client
 fn connect_mqtt(config: &Config) -> Result<mqtt::Client> {
-    let host = format!("tcp://{}:{}", &config.broker, &config.port);
+    let port = &config.port.unwrap_or(1883);
+    let host = format!("tcp://{}:{}", &config.broker, port);
     let client = mqtt::Client::new(host)?;
     let options = mqtt::ConnectOptionsBuilder::new()
         .user_name(&config.username)
@@ -39,43 +38,57 @@ fn connect_mqtt(config: &Config) -> Result<mqtt::Client> {
     Ok(client)
 }
 
+/// Send each configured message to the MQTT client
 fn send_status(config: &Config, client: &mqtt::Client) {
+    let prefix = &format!("server_status/{}/", get_hostname());
+
     loop {
-        if config.processor_use {
-            let pu_msg = mqtt::Message::new(
-                TOPIC_PREFIX.to_owned() + "processor_use",
-                get_processor_use(15),
-                2,
-            );
-            client.publish(pu_msg).unwrap()
+        if config.processor_use.unwrap_or_default() {
+            let key = "processor_use";
+            let msg = mqtt::Message::new(prefix.to_owned() + key, get_processor_use(15), 2);
+            match client.publish(msg.clone()) {
+                Ok(_) => (),
+                Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
+            }
         } else {
             std::thread::sleep(std::time::Duration::from_secs(15))
         }
 
-        if config.processor_temperature {
-            let pt_msg = mqtt::Message::new(
-                TOPIC_PREFIX.to_owned() + "processor_temperature",
-                get_processor_temperature(),
-                2,
-            );
-            client.publish(pt_msg).unwrap();
-        }
+        if config.disk_use_percent.unwrap_or_default() {
+            let default = vec!["/".to_string()];
+            let paths = config.disk_paths.as_ref().unwrap_or(&default);
 
-        if config.disk_use_percent {
-            for (i, path) in config.disk_paths.iter().enumerate() {
-                let du_msg = mqtt::Message::new(
-                    TOPIC_PREFIX.to_owned() + "disk_use_percent_disk" + &i.to_string(),
-                    get_disk_use_percent(path),
-                    2,
-                );
-                client.publish(du_msg).unwrap();
+            for (i, path) in paths.iter().enumerate() {
+                let key = format!("disk_use_percent_disk{}", i);
+                let msg =
+                    mqtt::Message::new(prefix.to_owned() + &key, get_disk_use_percent(path), 2);
+                match client.publish(msg.clone()) {
+                    Ok(_) => (),
+                    Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
+                }
             }
         }
 
-        if config.memory_use {
-            let mu_msg =
-                mqtt::Message::new(TOPIC_PREFIX.to_owned() + "memory_use", get_memory_use(), 2);
-            client.publish(mu_msg).unwrap();
+        if config.processor_temperature.unwrap_or_default() {
+            send_msg(&client, "processor_temperature", get_processor_temperature);
         }
+
+        if config.memory_use.unwrap_or_default() {
+            send_msg(&client, "memory_use", get_memory_use);
+        }
+
+        if config.last_boot.unwrap_or_default() {
+            send_msg(&client, "last_boot", get_last_boot);
+        }
+    }
+}
+
+/// Formats and sends an mqtt message with the specified key and the result of the val_fn.
+fn send_msg(client: &mqtt::Client, key: &str, val_fn: fn() -> String) {
+    let prefix = format!("server_status/{}/", get_hostname());
+    let msg = mqtt::Message::new(prefix + key, val_fn(), 2);
+    match client.publish(msg.clone()) {
+        Ok(_) => (),
+        Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
     }
 }
