@@ -1,9 +1,9 @@
 use anyhow::{bail, Result};
-use chrono::{Local, TimeZone, Utc};
+use chrono::{prelude::DateTime, Local};
 use psutil::{cpu, disk, host, memory, sensors};
 use serde::Deserialize;
 use serde_yaml;
-use std::{fmt::Debug, time::UNIX_EPOCH};
+use std::fmt::Debug;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -58,13 +58,8 @@ pub fn get_memory_use() -> String {
 
 pub fn get_last_boot() -> String {
     let unix_boot_time = host::boot_time().unwrap();
-    let boot_time =
-        chrono::Utc.timestamp(unix_boot_time.duration_since(UNIX_EPOCH).unwrap().into(), 0);
-    // let boot_time = Utc
-    //     .timestamp(unix_boot_time.duration_since(UNIX_EPOCH).unwrap())
-    //     .unwrap();
-    // boot_time.format()
-    format!("{}", boot_time.to_rfc3339())
+    let dt = DateTime::<Local>::from(unix_boot_time);
+    dt.to_rfc3339()
 }
 
 pub fn load_config() -> Result<Config> {
