@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: build
+      run: cargo build --release
+    - name: make tarball
+      run: mkdir server-status && cp target/release/server-status-rs README.md server-status && tar -czf server-status.tar.gz server-status
+    - name: upload tarball
+      uses: actions/upload-artifact@v3
+      with:
+        name: uploads
+        path: server-status.tar.gz
+
+  upload-to-release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-linux
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: create release
+        id: create_release
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: download artifacts
+        id: download_artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: uploads
+          path: uploads
+
+      - name: upload linux binary
+        id: upload-linux
+        uses: actions/upload-release-asset@v1.0.2
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.download_artifacts.outputs.download-path }}/server-status.tar.gz
+          asset_name: server-status.tar.gz
+          asset_content_type: application/gzip

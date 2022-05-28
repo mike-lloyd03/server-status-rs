@@ -1,0 +1,11 @@
+[Unit]
+Description=Server-Status MQTT Publisher
+
+[Service]
+Type=simple
+WorkingDirectory=WORKING_DIRECTORY
+ExecStart=WORKING_DIRECTORY/server-status
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
