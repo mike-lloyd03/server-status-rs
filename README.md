@@ -66,10 +66,15 @@ These MQTT messages can be used to create custom sensors in Home Assistant.
 The following template can be added to you `configuration.yaml` file to create an MQTT sensor.
 
 ```yaml
-  - platform: mqtt
-    name: "Server1 disk use percent"
-    state_topic: "server_status/server1/disk_use_percent_disk1"
-    unit_of_measurement: "%"
-    icon: mdi:harddisk
+mqtt:
+  sensor:
+    - name: "Server1 disk use percent"
+      state_topic: "server_status/server1/disk_use_percent_disk1"
+      unit_of_measurement: "%"
+      icon: mdi:harddisk
+    - name: "Server1 memory use"
+      state_topic: "server_status/server1/memory_use"
+      unit_of_measurement: "MB"
+      icon: mdi:memory
 ```
 
