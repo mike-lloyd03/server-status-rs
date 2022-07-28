@@ -63,7 +63,7 @@ tmpfs            6571416       360   6571056   1% /run/user/1000
 ### Home Assistant Integration
 These MQTT messages can be used to create custom sensors in Home Assistant.
 
-The following template can be added to you `configuration.yaml` file to create an MQTT sensor.
+The following template can be added to your `configuration.yaml` file to create an MQTT sensor.
 
 ```yaml
 mqtt:
