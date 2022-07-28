@@ -48,7 +48,7 @@ fn send_status(config: &Config, client: &mqtt::Client) {
             let msg = mqtt::Message::new(prefix.to_owned() + key, get_processor_use(15), 2);
             match client.publish(msg.clone()) {
                 Ok(_) => (),
-                Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
+                Err(err) => eprintln!("Failed to send message, {}: {}. {}", key, msg, err),
             }
         } else {
             std::thread::sleep(std::time::Duration::from_secs(15))
@@ -64,21 +64,21 @@ fn send_status(config: &Config, client: &mqtt::Client) {
                     mqtt::Message::new(prefix.to_owned() + &key, get_disk_use_percent(path), 2);
                 match client.publish(msg.clone()) {
                     Ok(_) => (),
-                    Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
+                    Err(_) => eprintln!("Failed to send message, {}: {}", key, msg),
                 }
             }
         }
 
         if config.processor_temperature.unwrap_or_default() {
-            send_msg(&client, "processor_temperature", get_processor_temperature);
+            send_msg(client, "processor_temperature", get_processor_temperature);
         }
 
         if config.memory_use.unwrap_or_default() {
-            send_msg(&client, "memory_use", get_memory_use);
+            send_msg(client, "memory_use", get_memory_use);
         }
 
         if config.last_boot.unwrap_or_default() {
-            send_msg(&client, "last_boot", get_last_boot);
+            send_msg(client, "last_boot", get_last_boot);
         }
     }
 }
@@ -89,6 +89,6 @@ fn send_msg(client: &mqtt::Client, key: &str, val_fn: fn() -> String) {
     let msg = mqtt::Message::new(prefix + key, val_fn(), 2);
     match client.publish(msg.clone()) {
         Ok(_) => (),
-        Err(_) => eprintln!("Failed to send message, {}: {}", key, msg.to_string()),
+        Err(_) => eprintln!("Failed to send message, {}: {}", key, msg),
     }
 }
